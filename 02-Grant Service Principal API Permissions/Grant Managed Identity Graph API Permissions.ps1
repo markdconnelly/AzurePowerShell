@@ -1,6 +1,6 @@
 $TenantID="(Your Tenant ID Here)"
 $GraphAppId = "00000003-0000-0000-c000-000000000000"
-$DisplayNameOfMSI="(Your Managed Identity Display Name Here)"
+$DisplayNameOfMSI="(Your Service Principal/Managed Identity Display Name Here)"
 #create an array of all the permissions you want to grant
 $PermissionNames = @(
     "AccessReview.Read.All"
