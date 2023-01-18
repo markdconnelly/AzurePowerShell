@@ -87,38 +87,44 @@
             $strAppFacts = Get-MgApplication -Filter "AppId eq '$strAppID'"
             $strSrvPrcFacts = Get-MgServicePrincipal -Filter "Id eq '$strAppObjectID'"
             $strDirObjFacts = $strDirObjFacts.AdditionalProperties
+
+            #   Set attributes that don't require further parsing
             $strPreferredSSOMode = $strDirObjFacts.PreferredSingleSignOnMode
             $strPrefferedTokenSignThumbprint = $strDirObjFacts.preferredTokenSigningKeyThumbprint | Out-String
             $strAppSignInAudience = $strDirObjFacts.signInAudience
             $strIdentifierURI = $strAppFacts.IdentifierUris | Out-String
             $strSAMLMetadataURL = $strAppFacts.SamlMetadataUrl
 
-            #extract the sub objects of the certificates element
-            $arrAppCertificateRaw = $strSrvPrcFacts.KeyCredentials
-    
-            #extract and parse the sub objects of the web element
+            #   extract and parse the sub objects of the web element
             $arrAppWebRaw = $strAppFacts.Web
             $strSignInURL = $arrAppWebRaw.RedirectUris | Out-String
             $strLogoutURL = $arrAppWebRaw.LogoutUrl 
-            $arrAppRegSecretRaw = $strAppFacts.PasswordCredentials
-            $arrAppRegCertificateRaw = $strAppFacts.KeyCredentials
-            
-            #extract facts via specific commands
-            $strAppMembershipRaw = Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $strAppObjectID
+
+            #   extract and parse the Application owenership element
             $strAppOwnerRaw = Get-MgServicePrincipalOwner -ServicePrincipalId $strAppObjectID
             $arrAppOwnerParsed = $strAppOwnerRaw.displayName | Out-String
+
+            #   extract and parse the Application membership element
+            $strAppMembershipRaw = Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $strAppObjectID
             $strAppMembershipParsed = $strAppMembershipRaw.PrincipalDisplayName | Out-String
+
+            #   extract and parse the member of element
             $strAppMemberOfRaw = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $strAppObjectID
             $strAppMemberOfParsed = $strAppMemberOfRaw.ResourceDisplayName | Out-String
 
-            #set application specific array of secrets and certificates (These variables should clear and re-populate for each app - ie. in each loop)
-            $arrThisAppSecretIDs = @()
-            $arrThisAppCertificateIDs = @()
-
-
-
-
+            #extract and parse the Oauth Permissions
             
+
+            #   extract and parse the sub objects of the Certificate elements
+            $arrAppCertificateRaw = $strSrvPrcFacts.KeyCredentials
+            $arrAppRegCertificateRaw = $strAppFacts.KeyCredentials
+            $arrThisAppCertificates = @()
+
+
+
+            #   extract and parse the sub objects of the Secret element
+            $arrAppRegSecretRaw = $strAppFacts.PasswordCredentials
+            $arrThisAppSecrets = @()
             foreach($secret in $arrAppRegSecretRaw){
                 $loopVarEndDate = ""
                 $loopVarDaysToExpire = ""
@@ -134,7 +140,10 @@
                     AppObjectID = $strAppObjectID
                 } ##[PSCustomObject]@{}   
             }
-            $arrThisAppSecretIDs = $varEntAppSecretOutput.SecretID | Out-String
+            $arrThisAppSecrets = $psobjEntAppSecretOutput | fl DisplayName, SecretID | Out-String
+
+
+
             foreach($cert in $arrAppRegCertificateRaw){
                 $loopVarEndDate = ""
                 $loopVarDaysToExpire = ""
@@ -171,7 +180,7 @@
                     AppObjectID = $strAppObjectID
                 } ##[PSCustomObject]@{}  
             }
-            $arrThisAppCertificateIDs = $psobjEntAppCertOutput.CertID | Out-String
+            $arrThisAppCertificates = $psobjEntAppCertOutput.CertID | Out-String
 
             #create/append PS Custom Object to store a table output of the enterprise application list
             $psobjEntAppListOutput += [PSCustomObject]@{               
