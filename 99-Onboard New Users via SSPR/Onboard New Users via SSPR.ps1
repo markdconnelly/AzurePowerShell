@@ -5,7 +5,6 @@ $strImportFilePath = "(Your CSV File & Path Here)"
 $strExportFilePath = "(File Path to Store CSVs After Completion)"
 ###################### Variables Requiring Input #################
 
-
 ######################Variables#################
 $arrImportedUsers = @()
 $psobjResolvedUsers = @()
@@ -34,6 +33,7 @@ $arrImportedUsers = Import-Csv -LiteralPath $strImportFilePath
 #   Perform data validation
 foreach($strUser in $arrImportedUsers){
     $objError = ""
+    $arrGetMgUser = ""
     #   Progress Bar
     Write-Progress `
         -Activity "Checking Users Against Azure" `
@@ -42,7 +42,7 @@ foreach($strUser in $arrImportedUsers){
         -PercentComplete  (($intProgressStatus / @($arrImportedUsers).Count) * 100)
     #   Try/Catch - Resolve Users
     try{
-        $arrGetMgUser = Get-MgUser -UserId $strUser
+        $arrGetMgUser = Get-MgUser -UserId $strUser.upn -ErrorAction Stop
         $psobjResolvedUsers += [PSCustomObject]@{
             Id = $arrGetMgUser.Id
             DisplayName = $arrGetMgUser.DisplayName
@@ -52,13 +52,13 @@ foreach($strUser in $arrImportedUsers){
             ProvidedPhone = $strUser.phone
         }       
     }catch{
-        $objError = Get-Error
+        $objError = $error[0].ToString() #Get-Error
         $psobjUnresolvedUsers += [PSCustomObject]@{
-            ProvidedUsername = $strUser
+            ProvidedUsername = $strUser.upn
             ProvidedEmail = $strUser.mail
             ProvidedPhone = $strUser.phone
             FailureReason = "Unable to resolve"
-            RawError = $objError | Out-String
+            RawError = $objError
             Id = "N/A"
             DisplayName = "N/A"
             NewEmail = "N/A"
@@ -69,34 +69,34 @@ foreach($strUser in $arrImportedUsers){
 }
 
 #   Set attributes for validated objects
-foreach($strResolvedUser in $arrResolvedUsers){
-    $intProgressStatus = 1
+$intProgressStatus = 1
+foreach($strResolvedUser in $psobjResolvedUsers){
     $objError = ""
     Write-Progress `
     -Activity "Setting Authentication Information" `
-    -Status "$intProgressStatus of $($arrResolvedUsers.Count)" `
+    -Status "$intProgressStatus of $($psobjResolvedUsers.Count)" `
     -CurrentOperation $intProgressStatus `
-    -PercentComplete  (($intProgressStatus / @($arrResolvedUsers).Count) * 100)
+    -PercentComplete  (($intProgressStatus / @($psobjResolvedUsers).Count) * 100)
 
     #   Try/Catch - Test Azure AD User Object
+    $arrEmailParams = @{
+        EmailAddress = $strEmailAddress
+    }
+    $arrPhoneParams = @{
+        PhoneNumber = $strPhoneNumber
+        PhoneType = "mobile"
+    }
     try{
-        $arrEmailParams = @{
-            EmailAddress = $strEmailAddress
-        }
-        $arrPhoneParams = @{
-            PhoneNumber = $strPhoneNumber
-            PhoneType = "mobile"
-        }
-        New-MgUserAuthenticationEmailMethod -UserId $strResolvedUser -BodyParameter $arrEmailParams
-        New-MgUserAuthenticationPhoneMethod -UserId $strResolvedUser -BodyParameter $arrPhoneParams
+        New-MgUserAuthenticationEmailMethod -UserId $strResolvedUser.UPN -BodyParameter $arrEmailParams -ErrorAction Stop
+        New-MgUserAuthenticationPhoneMethod -UserId $strResolvedUser.UPN -BodyParameter $arrPhoneParams -ErrorAction Stop
     }catch{
-        $objError = Get-Error
+        $objError = $error[0].ToString() #Get-Error
         $psobjUnresolvedUsers += [PSCustomObject]@{
-            ProvidedUsername = $strResolvedUser
+            ProvidedUsername = $strResolvedUser.UPN
             ProvidedEmail = $strResolvedUser.ProvidedEmail
             ProvidedPhone = $strResolvedUser.ProvidedPhone
             FailureReason = "User resolved to Azure AD, but security info was not able to be set"
-            RawError = $objError | Out-String
+            RawError = $objError
             Id = $strResolvedUser.Id
             DisplayName = $strResolvedUser.DisplayName
             NewEmail = $strResolvedUser.NewEmail
