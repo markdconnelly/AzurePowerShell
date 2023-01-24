@@ -2,7 +2,7 @@
 
 ###################### Variables Requiring Input #################
 $strImportFilePath = "(Your CSV File & Path Here)"
-$strExportFilePath = "(File Path to Store CSVs After Completion)"
+$strExportDirPath = "(File Directory Path to Store CSVs After Completion)"
 ###################### Variables Requiring Input #################
 
 ######################Variables#################
@@ -20,8 +20,8 @@ $intProgressStatus = 1
 $objError = ""
 $dateNow = Get-Date 
 $strFilePathDate = $dateNow.ToString("yyyyMMddhhmm")
-$strResolvedUserFilePath = $strExportFilePath + "Resolved_Users_" + $strFilePathDate + ".csv"
-$strUnresolvedUserFilePath = $strExportFilePath + "Unresolved_Users_" + $strFilePathDate + ".csv"
+$strResolvedUserFilePath = $strExportDirPath + "Resolved_Users_" + $strFilePathDate + ".csv"
+$strUnresolvedUserFilePath = $strExportDirPath + "Unresolved_Users_" + $strFilePathDate + ".csv"
 ######################Variables#################
 
 #   This import is critical to the workflow of this script. See the example csv in this folder for details.
@@ -37,7 +37,7 @@ foreach($strUser in $arrImportedUsers){
     #   Progress Bar
     Write-Progress `
         -Activity "Checking Users Against Azure" `
-        -Status "$intProgressStatus of $($arrImportedUsers.Count)" `
+        -Status "$($intProgressStatus) of $($arrImportedUsers.Count)" `
         -CurrentOperation $intProgressStatus `
         -PercentComplete  (($intProgressStatus / @($arrImportedUsers).Count) * 100)
     #   Try/Catch - Resolve Users
@@ -74,7 +74,7 @@ foreach($strResolvedUser in $psobjResolvedUsers){
     $objError = ""
     Write-Progress `
     -Activity "Setting Authentication Information" `
-    -Status "$intProgressStatus of $($psobjResolvedUsers.Count)" `
+    -Status "$($intProgressStatus) of $($psobjResolvedUsers.Count)" `
     -CurrentOperation $intProgressStatus `
     -PercentComplete  (($intProgressStatus / @($psobjResolvedUsers).Count) * 100)
 
@@ -103,6 +103,7 @@ foreach($strResolvedUser in $psobjResolvedUsers){
             UPN = $strResolvedUser.UPN
         } 
     }
+    $intProgressStatus ++
 }
 #   export to file
 $psobjUnresolvedUsers | ConvertTo-Csv | Out-File $strUnresolvedUserFilePath
