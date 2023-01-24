@@ -14,8 +14,6 @@ $arrEmailParams = @()
 $arrPhoneParams = @()
 $strUser = ""
 $strResolvedUser = ""
-$strEmailAddress = ""
-$strPhoneNumber = ""
 $intProgressStatus = 1
 $objError = ""
 $dateNow = Get-Date 
@@ -47,7 +45,7 @@ foreach($strUser in $arrImportedUsers){
             Id = $arrGetMgUser.Id
             DisplayName = $arrGetMgUser.DisplayName
             NewEmail = $arrGetMgUser.Mail
-            ProvidedEmail = $strUser.mail
+            ProvidedEmail = $strUser.email
             UPN = $arrGetMgUser.UserPrincipalName
             ProvidedPhone = $strUser.phone
         }       
@@ -72,6 +70,8 @@ foreach($strUser in $arrImportedUsers){
 $intProgressStatus = 1
 foreach($strResolvedUser in $psobjResolvedUsers){
     $objError = ""
+    $arrEmailParams = $null
+    $arrPhoneParams = $null
     Write-Progress `
     -Activity "Setting Authentication Information" `
     -Status "$($intProgressStatus) of $($psobjResolvedUsers.Count)" `
@@ -80,10 +80,10 @@ foreach($strResolvedUser in $psobjResolvedUsers){
 
     #   Try/Catch - Test Azure AD User Object
     $arrEmailParams = @{
-        EmailAddress = $strEmailAddress
+        EmailAddress = $strResolvedUser.ProvidedEmail
     }
     $arrPhoneParams = @{
-        PhoneNumber = "+1 " + $strPhoneNumber
+        PhoneNumber = "+1 " + $strResolvedUser.ProvidedPhone
         PhoneType = "mobile"
     }
     try{
