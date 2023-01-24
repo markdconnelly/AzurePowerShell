@@ -83,7 +83,7 @@ foreach($strResolvedUser in $psobjResolvedUsers){
         EmailAddress = $strEmailAddress
     }
     $arrPhoneParams = @{
-        PhoneNumber = $strPhoneNumber
+        PhoneNumber = "+1 " + $strPhoneNumber
         PhoneType = "mobile"
     }
     try{
