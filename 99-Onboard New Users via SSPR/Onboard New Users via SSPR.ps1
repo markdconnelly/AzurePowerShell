@@ -63,7 +63,7 @@ foreach($strResolvedUser in $arrResolvedUsers){
         $psobjUnresolvedUsers += [PSCustomObject]@{
             ProvidedUsername = $strResolvedUser
             ProvidedEmail = $strResolvedUser.ProvidedEmail
-            ProvidedPhone = $strUser.phone
+            ProvidedPhone = $strResolvedUser.ProvidedPhone
             FailureReason = "User resolved to Azure AD, but security info was not able to be set"
             Id = $strResolvedUser.Id
             DisplayName = $strResolvedUser.DisplayName
