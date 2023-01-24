@@ -18,51 +18,63 @@
     #################################################### <Enterprise Application Variables> ####################################################
     #region Enterprise Application Variables
     #Set enterprise application variables to blank to ensure sequence of operations    
-    $psobjEntAppListOutput = @()
-    $arrAAD_Applications = @()
-    $arrAppRegSecretRaw = @()
-    $arrAppRegCertificateRaw = @()
-    $arrAppWebRaw = @()
-    $strEntAppDirObjFacts = ""
-    $strAppRegDirObjFacts = ""
-    $strAppFacts = ""
-    $strSrvPrcFacts = ""
-    $strAppDisplayName = ""
     $strEntAppObjectID = ""
     $strAppRegObjectID = ""
+    $strAppDisplayName = ""
+    $strServicePrincipalNames = ""
+    $strServicePrincipalType = ""
     $strAppID = ""
-    $strAppMembershipRaw = ""
+    $strAppOrgID = ""
     $strAppOwnerRaw = ""
-    $arrAppOwnerParsed = @()
-    $strAppSignInAudience = ""
-    #endregion Enterprise Application Variables
-    #################################################### </Enterprise Application Variables> ###################################################
-
-    #################################################### <Enterprise Application Certificate Variables> ########################################
-    #region Enterprise Application Certificate Variables
+    $psobjAPIOutput =@()
+    $strAPIRaw = ""
+    $strAPIKnownClientApps = ""
+    $strAPIPreAuthedApps = ""
+    $strAPIAcceptedMappedClaims = ""
+    $strAPIOauth2PermissionScopesRaw = ""
+    $strAppRoles = ""
+    $Oauth2PermissionScopesRaw = ""
     $psobjEntAppCertOutput = @()
     $arrEntAppCertificateRaw = @()
     $arrAppRegCertificateRaw = @()
-    #endregion Enterprise Application Certificate Variables
-    #################################################### </Enterprise Application Certificate Variables> #######################################
-
-    #################################################### <Enterprise Application Secret Variables> #############################################
-    #region Enterprise Application Secret Variables
     $psobjEntAppSecretOutput = @()
     $arrAppRegSecretRaw = @()
-    #endregion Enterprise Application Secret Variables
-    #################################################### </Enterprise Application Secret Variables> ############################################
-
-    #################################################### <Enterprise Application SSO Variables> ################################################
-    #region Enterprise Application SSO Variables
+    $strRequiredResourceAccess = ""
+    $strAppMembershipRaw = ""
+    $strEntAppCreatedObjects = ""
     $strPreferredSSOMode = ""
+    $strAppPublisherDomain = ""
+    $arrAppWebRaw = @()
+    $strAppWebHomePageURL = ""
+    $strAppWebLogoutURL = ""
+    $strAppWebRedirectURI = ""
+    $strAppWebRedirectURISettings = ""
+    $strApPWebImplicitSettingsRaw = ""
+    $strAppWebHomePageURL = ""
+    $strAppSignInAudience = ""
+    $strSAMLSSOSettings = ""
     $strPrefferedTokenSignThumbprint = ""
     $strIdentifierURI = ""
     $strSAMLMetadataURL = ""
     $strSignInURL = ""
     $strLogoutURL = ""
-    #endregion Enterprise Application SSO Variables
-    #################################################### </Enterprise Application SSO Variables> ###############################################
+    $strReplyURLs
+    $strNotificationEmail = ""
+    $strTokenEncryptionKeyID = ""
+    $strTokenIssuancePolicy = ""
+    $strTokenLifetimePolicy = ""
+    $strGroupMembershipClaims = ""
+    $strOptionalClaimsRaw = ""
+    $strClaimsMappingPolicy = ""
+    $strDelegatedPermissionClassification = ""
+    $strEndpoints = ""
+    $strFederatedIdentityCredentials = ""
+    $psobjEntAppListOutput = @()
+    $arrAAD_Applications = @()  
+    $strEntAppDirObjFacts = ""
+    $strAppRegDirObjFacts = ""
+    $strAppFacts = ""
+    $strSrvPrcFacts = ""
 #endregion variables     
 #################################################### </Variables> ##############################################################################
 
@@ -83,9 +95,9 @@
             $strEntAppObjectID = $app.Id
             $strAppID = $app.AppId
 
-            #   Enterprise applications are Applications, Directory Objects, and Service Principals. Because of this, we collect 3 arrays for 
+            #   Enterprise applications are Applications, Directory Objects, and Service Principals. Because of this, we collect 4 arrays for 
             #   each object type per application. We also do the AppFacts first because App Registrations have unique object IDs that we need
-            #   to extract before getting the Directory Object
+            #   to extract before getting the Directory Objects
             $strAppFacts = Get-MgApplication -Filter "AppId eq '$strAppID'"
             $strAppRegObjectID = $strAppFacts.Id
             $strSrvPrcFacts = Get-MgServicePrincipal -Filter "Id eq '$strEntAppObjectID'"
@@ -94,11 +106,181 @@
             $strEntAppDirObjFacts = $strEntAppDirObjFacts.AdditionalProperties
             $strAppRegDirObjFacts = $strAppRegDirObjFacts.AdditionalProperties
 
-$Fix extraction strings after this
+#$Fix extraction strings after this
+
+            
+           
+
+            $strServicePrincipalNames = ""
+            $strServicePrincipalType = ""
+
+            $strAppOrgID = ""
+            $strAppOwnerRaw = ""
+            $psobjAPIOutput =@()
+            $strAPIRaw = ""
+            $strAPIKnownClientApps = ""
+            $strAPIPreAuthedApps = ""
+            $strAPIAcceptedMappedClaims = ""
+            $strAPIOauth2PermissionScopesRaw = ""
+            $strAppRoles = ""
+            $Oauth2PermissionScopesRaw = ""
+            $psobjEntAppCertOutput = @()
+            $arrEntAppCertificateRaw = @()
+            $arrAppRegCertificateRaw = @()
+            $psobjEntAppSecretOutput = @()
+            $arrAppRegSecretRaw = @()
+            $strRequiredResourceAccess = ""
+            $strAppMembershipRaw = ""
+            $strEntAppCreatedObjects = ""
+            $strPreferredSSOMode = ""
+            $strAppPublisherDomain = ""
+            $arrAppWebRaw = @()
+            $strAppWebHomePageURL = ""
+            $strAppWebLogoutURL = ""
+            $strAppWebRedirectURI = ""
+            $strAppWebRedirectURISettings = ""
+            $strApPWebImplicitSettingsRaw = ""
+            $strAppWebHomePageURL = ""
+            $strAppSignInAudience = ""
+            $strSAMLSSOSettings = ""
+            $strPrefferedTokenSignThumbprint = ""
+            $strIdentifierURI = ""
+            $strSAMLMetadataURL = ""
+            $strSignInURL = ""
+            $strLogoutURL = ""
+            $strReplyURLs
+            $strNotificationEmail = ""
+            $strTokenEncryptionKeyID = ""
+            $strTokenIssuancePolicy = ""
+            $strTokenLifetimePolicy = ""
+            $strGroupMembershipClaims = ""
+            $strOptionalClaimsRaw = ""
+            $strClaimsMappingPolicy = ""
+            $strDelegatedPermissionClassification = ""
+            $strEndpoints = ""
+            $strFederatedIdentityCredentials = ""
+            $psobjEntAppListOutput = @()
+
+#up to this - see below for old content
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
             #   Set attributes that don't require further parsing
-            $strPreferredSSOMode = $strDirObjFacts.PreferredSingleSignOnMode
+            
+            $strPreferredSSOMode = $strEntAppDirObjFacts.PreferredSingleSignOnMode
             $strPrefferedTokenSignThumbprint = $strDirObjFacts.preferredTokenSigningKeyThumbprint | Out-String
             $strAppSignInAudience = $strDirObjFacts.signInAudience
             $strIdentifierURI = $strAppFacts.IdentifierUris | Out-String
