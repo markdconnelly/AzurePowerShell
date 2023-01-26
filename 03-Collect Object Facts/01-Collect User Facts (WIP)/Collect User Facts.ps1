@@ -2,6 +2,7 @@
 $strExportDirPath = "(File Directory Path to Store CSVs After Completion)"
 ###################### Variables Requiring Input #################
 
+#region Parser Functions
 # It is assumed at this point that you are connected to the Microsoft Graph API with User.Read.All permissions
 $arrAllUsers = @()
 $arrAllUsers = Get-MgUser -All $true
@@ -18,6 +19,7 @@ foreach($arrUser in $arrAllUsers){
     -PercentComplete  (($intProgressStatus / @($arrAllUsers).Count) * 100)
     #   Try/Catch - Resolve Users
     try{
+        #region variables
         $arrGetMgUser = Get-MgUser -UserId $arrUser.Id -ErrorAction Stop
         $arrPhones = @()
         $arrAuthMethods = @()
@@ -33,22 +35,25 @@ foreach($arrUser in $arrAllUsers){
         $arrManagedAppRegistrations = @()
         $arrUserOwnedDevices = @()
         $arrUserRegisteredDevices = @()
-        $arrUserDevices = @()
-        #parse manager object
+        $arrUserDevices = @()#endregion
+        
+        #region ParseManagerObject
         try{
             $arrUserManager = Get-MgUserManager -UserId $arrGetMgUser.Id -ErrorAction Stop
-            $strUserManager = $arrUserManager.AdditionalProperties.DisplayName
+            $strUserManager = $arrUserManager.AdditionalProperties.DisplayName 
         }catch{
             $strUserManager = "No Manager"
-        }
-        #parse manages object
+        }#endregion 
+
+        #region parse manages object
         try {
             $arrUserManages = Get-MgUserDirectReport -UserId $arrGetMgUser.Id -ErrorAction Stop
             $arrUserManages = $arrUserManages.AdditionalProperties.DisplayName 
         }
         catch {
             $arrUserManages = "No Direct Reports"
-        }
+        }#endregion
+        
         #parse license object
         try {
             $arrLicenses = Get-MgUserLicenseDetail -UserId $arrGetMgUser.Id -ErrorAction Stop
@@ -141,6 +146,8 @@ foreach($arrUser in $arrAllUsers){
     }   
     $intProgressStatus++
 }
+
+
 #   export to file
 $dateNow = Get-Date 
 $strFilePathDate = $dateNow.ToString("yyyyMMddhhmm")
