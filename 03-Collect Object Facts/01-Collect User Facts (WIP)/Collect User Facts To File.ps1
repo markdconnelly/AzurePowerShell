@@ -42,6 +42,7 @@ foreach($arrUser in $arrAllUsers){
             $arrUserManager = Get-MgUserManager -UserId $arrGetMgUser.Id -ErrorAction Stop
             $strUserManager = $arrUserManager.AdditionalProperties.DisplayName 
         }catch{
+            $objError += Get-Error
             $strUserManager = "No Manager"
         }#endregion 
 
@@ -51,6 +52,7 @@ foreach($arrUser in $arrAllUsers){
             $arrUserManages = $arrUserManages.AdditionalProperties.DisplayName 
         }
         catch {
+            $objError += Get-Error
             $arrUserManages = "No Direct Reports"
         }#endregion
         
@@ -59,6 +61,7 @@ foreach($arrUser in $arrAllUsers){
             $arrLicenses = Get-MgUserLicenseDetail -UserId $arrGetMgUser.Id -ErrorAction Stop
         }
         catch {
+            $objError += Get-Error
             $arrLicenses = "No Licenses"
         }
         #parse memberOf object
@@ -66,6 +69,7 @@ foreach($arrUser in $arrAllUsers){
             $arrMemberOf = Get-MgUserMemberOf -UserId $arrGetMgUser.Id -ErrorAction Stop
         }
         catch {
+            $objError += Get-Error
             $arrMemberOf = "No MemberOf"
         }
         #parse oauthPermissionGrants object
@@ -73,6 +77,7 @@ foreach($arrUser in $arrAllUsers){
             $arrOauthPermissionGrants = Get-MgUserOauth2PermissionGrant -UserId $arrGetMgUser.Id -ErrorAction Stop
         }
         catch {
+            $objError += Get-Error
             $arrOauthPermissionGrants = "No OAuth Permission Grants"
         }
         #parse managedAppRegistrations object
@@ -80,6 +85,7 @@ foreach($arrUser in $arrAllUsers){
             $arrManagedAppRegistrations = Get-MgUserManagedAppRegistration -UserId $arrGetMgUser.Id -ErrorAction Stop
         }
         catch {
+            $objError += Get-Error
             $arrManagedAppRegistrations = "No Managed App Registrations"
         }
         #parse devices object
@@ -87,11 +93,13 @@ foreach($arrUser in $arrAllUsers){
             $arrUserOwnedDevices = Get-MgUserOwnedDevice -UserId $arrGetMgUser.Id -ErrorAction SilentlyContinue
             
         }catch {
+            $objError += Get-Error
             $arrUserOwnedDevices = "No Owned Devices"
         }
         try {
             $arrUserRegisteredDevices = Get-MgUserRegisteredDevice -UserId $arrGetMgUser.Id -ErrorAction SilentlyContinue
         }catch {
+            $objError += Get-Error
             $arrUserRegisteredDevices = "No Registered Devices"
         }
         $arrUserDevices = $arrUserOwnedDevices + $arrUserRegisteredDevices #polish this up later
@@ -108,7 +116,7 @@ foreach($arrUser in $arrAllUsers){
         $strPriority = "TBD"
     }
     catch{
-        $objError = Get-Error
+        $objError += Get-Error
     }
     $psobjUsersDatabase += [PSCustomObject]@{
         Id = $arrGetMgUser.Id
@@ -153,3 +161,5 @@ $dateNow = Get-Date
 $strFilePathDate = $dateNow.ToString("yyyyMMddhhmm")
 $strResolvedUserFilePath = $strExportDirPath + "UserDatabase_" + $strFilePathDate + ".csv"
 $psobjUsersDatabase | ConvertTo-Csv | Out-File $strResolvedUserFilePath
+
+
