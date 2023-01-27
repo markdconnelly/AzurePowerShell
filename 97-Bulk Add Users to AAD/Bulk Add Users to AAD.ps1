@@ -2,9 +2,9 @@
 $strImportFilePath = ""
 $strExportDirPath = ""
 $strPassword = ""
-$strImportFilePath = "(Your CSV File & Path Here)"
-$strExportDirPath = "(File Directory Path to Store CSVs After Completion)"
-$strPassword = Get-Credential -Message "Enter a default password for all users."
+$strImportFilePath = "C:\temp\Test_Bulk_Add_Users_12723.csv"
+$strExportDirPath = "C:\temp\"
+$strPassword = "P@ssword123!" #Read-Host -AsSecureString -Prompt "Enter a default password for all users."
 ###################### Variables Requiring Input #################
 
 $arrImportedUsers = @()
@@ -23,16 +23,19 @@ $boolAccountEnabled = $null
 $intProgressStatus = 1
 $intAddUserSuccess = 0
 $intAddUserFailure = 0
+$hashPassword = @{
+    Password = $strPassword
+}
 foreach($arrUser in $arrImportedUsers){
     $objError = ""
     $strResult = ""
     #   Try/Catch - Add Users
     try {
         New-MgUser `
-            -AccountEnabled $true `
+            -AccountEnabled:$true `
             -DisplayName $arrUser.DisplayName `
             -MailNickname $arrUser.DisplayName `
-            -Password $strPassword `
+            -PasswordProfile $hashPassword `
             -UserPrincipalName $arrUser.UserPrincipalName `
             -UsageLocation "US" `
             -ErrorAction Stop
@@ -70,3 +73,12 @@ $strFinalStatusOutput = $strExportDirPath + "BatchSSPR_AuthMethodSetResults" + $
 $psobjBulkAddOutput | ConvertTo-Csv | Out-File $strFinalStatusOutput
 Write-Host "Export complete. " -ForegroundColor Green
 Write-Host "See " + $strFinalStatusOutput + " for a detailed output."$ -ForegroundColor Red -BackgroundColor Yellow
+
+New-MgUser `
+-AccountEnabled:$true `
+-DisplayName "test.Employee5" `
+-MailNickname "test.Employee5" `
+-PasswordProfile $hashPassword `
+-UserPrincipalName "test.employee5@carle.online" `
+-UsageLocation "US" `
+-ErrorAction Stop
