@@ -62,6 +62,7 @@ foreach($arrUser in $arrImportedUsers){
     }
     $intProgressStatus ++
 }
+$arrResolvedUsers = @()
 $arrResolvedUsers = $psobjResolvedUserStatus | Where-Object {$_.Result -eq "User resolved to Azure AD"}
 $psobjUnresolvedUsers = $psobjResolvedUserStatus | Where-Object {$_.Result -eq "Unable to resolve user to Azure AD"}
 Write-Host "Resolved Users: $intResolvedUserSuccess" -ForegroundColor Green
@@ -69,7 +70,6 @@ Write-Host "Unresolved Users: $intResolvedUserFailure" -ForegroundColor Red
 Write-Host "Setting Authentication Information for $($arrResolvedUsers.Count) users"
 #   Set attributes for validated objects
 $intProgressStatus = 1
-$arrResolvedUser = ""
 $intAuthUpdateEmailSuccess = 0
 $intAuthUpdateEmailFailure = 0
 $intAuthUpdatePhoneSuccess = 0
