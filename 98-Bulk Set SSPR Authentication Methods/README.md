@@ -1,4 +1,4 @@
-# Buld Set SSPR Authentication Methods  
+# Bulk Set SSPR Authentication Methods  
 Assumptions:  
     - You are connected to Graph via an Application Registration with "UserAuthenticationMethod.ReadWrite.All"  
     - You have a CSV file with the following columns:  
