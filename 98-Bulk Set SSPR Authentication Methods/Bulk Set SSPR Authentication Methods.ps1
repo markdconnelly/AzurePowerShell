@@ -182,7 +182,7 @@ Write-Host "Succesfully set Authentication Information for " $intTotalSuccesses 
 Write-Host "Failed to set Email Authentication Information for $intAuthUpdateEmailFailure Users." -ForegroundColor Red
 Write-Host "Failed to set Phone Authentication Information for $intAuthUpdatePhoneFailure Users." -ForegroundColor Red
 Write-Host "Failed to resolve users to Azure AD for $intResolvedUserFailure Users." -ForegroundColor Red
-Write-Host "Unique users with failures: $intUniqueUserFailures"  -ForegroundColor Red
+Write-Host "Unique users with failures: $($intUniqueUserFailures.Count)"  -ForegroundColor Red
 Write-Host "Exporting results to CSV file. "
 #   export to file
 $dateNow = $null
