@@ -2,9 +2,9 @@
 $strImportFilePath = ""
 $strExportDirPath = ""
 $strPassword = ""
-$strImportFilePath = "C:\temp\Test_Bulk_Add_Users_12723.csv"
-$strExportDirPath = "C:\temp\"
-$strPassword = "P@ssword123!" #Read-Host -AsSecureString -Prompt "Enter a default password for all users."
+$strImportFilePath = "(Your CSV file path here)"
+$strExportDirPath = "(Youre export directory path here)"
+$strPassword = "(Default Password Here)" #Read-Host -AsSecureString -Prompt "Enter a default password for all users."
 ###################### Variables Requiring Input #################
 
 $arrImportedUsers = @()

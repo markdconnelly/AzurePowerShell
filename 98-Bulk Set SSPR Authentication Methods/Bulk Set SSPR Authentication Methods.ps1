@@ -44,7 +44,7 @@ foreach($arrImportedUser in $arrImportedUsers){
     }catch{
         $objCheckAADError = $Error[0].Exception.Message #Get-Error
         $psobjOperationResults += [PSCustomObject]@{
-            Id = $null
+            Id = "Unable to resolve user to Azure AD"
             DisplayName = $null
             NewEmail = $null
             OldEmail = $arrImportedUser.mail
