@@ -73,12 +73,3 @@ $strFinalStatusOutput = $strExportDirPath + "BatchSSPR_AuthMethodSetResults" + $
 $psobjBulkAddOutput | ConvertTo-Csv | Out-File $strFinalStatusOutput
 Write-Host "Export complete. " -ForegroundColor Green
 Write-Host "See " + $strFinalStatusOutput + " for a detailed output."$ -ForegroundColor Red -BackgroundColor Yellow
-
-New-MgUser `
--AccountEnabled:$true `
--DisplayName "test.Employee5" `
--MailNickname "test.Employee5" `
--PasswordProfile $hashPassword `
--UserPrincipalName "test.employee5@carle.online" `
--UsageLocation "US" `
--ErrorAction Stop
