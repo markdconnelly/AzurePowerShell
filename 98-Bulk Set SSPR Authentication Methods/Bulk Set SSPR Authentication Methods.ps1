@@ -12,12 +12,14 @@ $arrImportedUsers = Import-Csv -LiteralPath $strImportFilePath
 
 Write-Host "Imported $($arrImportedUsers.Count) users from $($strImportFilePath). Performing data validation" -ForegroundColor Green
 #   Perform data validation
-$arrUser = @()
+$arrImportedUser = @()
 $intProgressStatus = 1
 $intResolvedUserSuccess = 0
 $intResolvedUserFailure = 0
-foreach($arrUser in $arrImportedUsers){
-    $objError = ""
+$psobjAADUsers = @()
+$psobjOperationResults = @()
+foreach($arrImportedUser in $arrImportedUsers){
+    $objCheckAADError = ""
     $arrGetMgUser = @()
     #   Progress Bar
     Write-Progress `
@@ -25,136 +27,176 @@ foreach($arrUser in $arrImportedUsers){
         -Status "$($intProgressStatus) of $($arrImportedUsers.Count)" `
         -CurrentOperation $intProgressStatus `
         -PercentComplete  (($intProgressStatus / @($arrImportedUsers).Count) * 100)
-    #   Try/Catch - Resolve Users
-    $psobjResolvedUserStatus = @()
+    #   Try/Catch - Check If Users Exist in Azure
     try{
-        $arrGetMgUser = Get-MgUser -UserId $arrUser.upn -ErrorAction Stop
-        $psobjResolvedUserStatus += [PSCustomObject]@{
+        $arrGetMgUser = Get-MgUser -UserId $arrImportedUser.upn -ErrorAction Stop
+        $psobjAADUsers += [PSCustomObject]@{
             Id = $arrGetMgUser.Id
             DisplayName = $arrGetMgUser.DisplayName
             NewEmail = $arrGetMgUser.Mail
-            OldEmail = $arrUser.email
+            OldEmail = $arrImportedUser.email
             NewPhone = $arrGetMgUser.MobilePhone
-            OldPhone = $arrUser.phone
+            OldPhone = $arrImportedUser.phone
             UPN = $arrGetMgUser.UserPrincipalName
-            Result = "User resolved to Azure AD" 
+            Result = "User resolved to Azure AD"
+            AADUser = $true 
             AuthMethodEmailSet = $false
             AuthMethodPhoneSet = $false
             RawError = $null
         }
         $intResolvedUserSuccess ++       
     }catch{
-        $objError = Get-Error
-        $psobjResolvedUserStatus += [PSCustomObject]@{
+        $objCheckAADError = $Error[0].Exception.Message #Get-Error
+        $psobjOperationResults += [PSCustomObject]@{
             Id = $null
             DisplayName = $null
             NewEmail = $null
-            OldEmail = $arrUser.mail
+            OldEmail = $arrImportedUser.mail
             NewPhone = $null
-            OldPhone = $arrUser.phone
-            UPN = $arrUser.upn
+            OldPhone = $arrImportedUser.phone
+            UPN = $arrImportedUser.upn
             Result = "Unable to resolve user to Azure AD"
+            AADUser = $false
             AuthMethodEmailSet = $false
-            AuthMethodPhoneSet = $false
-            RawError = $objError
+            AuthMethodPhoneSet = $false 
+            RawError = $objCheckAADError
         } 
         $intResolvedUserFailure ++
     }
     $intProgressStatus ++
 }
-$arrResolvedUsers = @()
-$arrResolvedUsers = $psobjResolvedUserStatus | Where-Object {$_.Result -eq "User resolved to Azure AD"}
-$psobjUnresolvedUsers = $psobjResolvedUserStatus | Where-Object {$_.Result -eq "Unable to resolve user to Azure AD"}
-Write-Host "Resolved Users: $intResolvedUserSuccess" -ForegroundColor Green
+Write-Host "Resolved AAD Users: $intResolvedUserSuccess" -ForegroundColor Green
 Write-Host "Unresolved Users: $intResolvedUserFailure" -ForegroundColor Red
-Write-Host "Setting Authentication Information for $($arrResolvedUsers.Count) users"
-#   Set attributes for validated objects
+Write-Host "Setting Authentication Phone Information for $($psobjAADUsers.Count) users"
+#   Set phone attributes for users
 $intProgressStatus = 1
-$intAuthUpdateEmailSuccess = 0
-$intAuthUpdateEmailFailure = 0
 $intAuthUpdatePhoneSuccess = 0
 $intAuthUpdatePhoneFailure = 0
-$psobjAuthMethodResults = @()
-$psobjAuthMethodResults = $psobjUnresolvedUsers #   This is to ensure that the unresolved users are included in the final output
-foreach($arrUser in $arrResolvedUsers){
-    $objError = ""
+$arrPhoneSetUser = @()
+$psobjPhoneSetResults = @()
+foreach($arrPhoneSetUser in $psobjAADUsers){
+    $objPhoneSetError = ""
     Write-Progress `
-    -Activity "Setting Authentication Information" `
-    -Status "$($intProgressStatus) of $($arrResolvedUsers.Count)" `
-    -CurrentOperation $intProgressStatus `
-    -PercentComplete  (($intProgressStatus / @($arrResolvedUsers).Count) * 100)
-    #   set variables internal to the loop
-    $arrEmailParams = @()
-    $arrEmailParams = @{
-        EmailAddress = $arrUser.OldEmail
-    }
+        -Activity "Setting Phone Authentication Information" `
+        -Status "$($intProgressStatus) of $($psobjResolvedUsers.Count)" `
+        -CurrentOperation $intProgressStatus `
+        -PercentComplete  (($intProgressStatus / @($psobjResolvedUsers).Count) * 100)
     $arrPhoneParams = @()
     $arrPhoneParams = @{
         PhoneNumber = "+1 " + $arrUser.OldPhone
         PhoneType = "mobile"
     }
-    $id = $arrUser.Id
-    $displayName = $arrUser.DisplayName
-    $newEmail = $arrUser.NewEmail
-    $oldEmail = $arrUser.OldEmail
-    $newPhone = $arrUser.NewPhone
-    $oldPhone = $arrUser.OldPhone
-    $upn = $arrUser.UPN
-    $result = $arrUser.Result   
-    $authMethodEmailSet = $arrUser.AuthMethodEmailSet
-    $authMethodPhoneSet = $arrUser.AuthMethodPhoneSet
-    $rawError = $arrUser.RawError
-#   Try/Catch - Test Azure AD User Object
     try{
-        New-MgUserAuthenticationEmailMethod -UserId $arrResolvedUser.UPN -BodyParameter $arrEmailParams -ErrorAction Stop
-        $authMethodEmailSet = $true
-        $result += " | Email Authentication Method Set"
-        $intAuthUpdateEmailSuccess ++
-    }catch{
-        $objError = $rawError += Get-Error
-        $result += " | Email Authentication Method Not Set"
-        $intAuthUpdateEmailFailure ++
-    } 
-    try{
-        New-MgUserAuthenticationPhoneMethod -UserId $arrResolvedUser.UPN -BodyParameter $arrPhoneParams -ErrorAction Stop
-        $authMethodPhoneSet = $true
-        $result += " | Phone Authentication Method Set"
+        New-MgUserAuthenticationPhoneMethod -UserId $psobjAADUsers.UPN -BodyParameter $arrPhoneParams -ErrorAction Stop
         $intAuthUpdatePhoneSuccess ++
-    }catch {
-        $objError = $rawError += Get-Error
-        $result += " | Phone Authentication Method Not Set"
+        $psobjPhoneSetResults += [PSCustomObject]@{
+            Id = $arrPhoneSetUser.Id
+            DisplayName = $arrPhoneSetUser.DisplayName
+            NewEmail = $arrPhoneSetUser.NewEmail
+            OldEmail = $arrPhoneSetUser.OldEmail
+            NewPhone = $arrPhoneSetUser.NewPhone
+            OldPhone = $arrPhoneSetUser.OldPhone
+            UPN = $arrPhoneSetUser.UPN
+            Result = "Phone Authentication Method Set. Email Not Set."
+            AuthMethodEmailSet = $false 
+            AuthMethodPhoneSet = $true
+            RawError = $null
+        }
+    }catch{
+        $objPhoneSetError = $Error[0].Exception.Message #Get-Error
         $intAuthUpdatePhoneFailure ++
-    }
-    $psobjAuthMethodResults += [PSCustomObject]@{
-        Id = $id
-        DisplayName = $displayName
-        NewEmail = $newEmail
-        OldEmail = $oldEmail
-        NewPhone = $newPhone
-        OldPhone = $oldPhone
-        UPN = $upn
-        Result = $result
-        AuthMethodEmailSet = $authMethodEmailSet  
-        AuthMethodPhoneSet = $authMethodPhoneSet
-        RawError = $rawError
+        $psobjOperationResults += [PSCustomObject]@{
+            Id = $arrPhoneSetUser.Id
+            DisplayName = $arrPhoneSetUser.DisplayName
+            NewEmail = $arrPhoneSetUser.NewEmail
+            OldEmail = $arrPhoneSetUser.OldEmail
+            NewPhone = $arrPhoneSetUser.NewPhone
+            OldPhone = $arrPhoneSetUser.OldPhone
+            UPN = $arrPhoneSetUser.UPN
+            Result = "Unable to resolve user to Azure AD"
+            AADUser = $true
+            AuthMethodEmailSet = $false
+            AuthMethodPhoneSet = $false 
+            RawError = $objPhoneSetError
+        }
     } 
     $intProgressStatus ++
 }
-Write-Host "Email Authentication Method Suceeded for " + $intAuthUpdateEmailSuccess + " Users." -ForegroundColor Green
-Write-Host "Phone Authentication Method Suceeded for " + $intAuthUpdatePhoneSuccess + " Users." -ForegroundColor Green
-Write-Host "Email Authentication Method Failed for " + $intAuthUpdateEmailFailure + " Users." -ForegroundColor Red
-Write-Host "Phone Authentication Method Suceeded for " + $intAuthUpdatePhoneSuccess + " Users." -ForegroundColor Green
-Write-Host "Phone Authentication Method Failed for " + $intAuthUpdatePhoneFailure + " Users." -ForegroundColor Red
-Write-Host "Total successes: " + ($intAuthUpdateEmailSuccess + $intAuthUpdatePhoneSuccess) -ForegroundColor Green
-Write-Host "Total failures: " + ($intAuthUpdateEmailFailure + $intAuthUpdatePhoneFailure) -ForegroundColor Red
+Write-Host "Phone Authentication Method Suceeded for $intAuthUpdatePhoneSuccess Users." -ForegroundColor Green
+Write-Host "Phone Authentication Method Failed for $intAuthUpdatePhoneFailure Users." -ForegroundColor Red
+Write-Host "Setting Authentication Email Information for $($psobjAADUsers.Count) users"
+#   Set email attributes for users
+$intProgressStatus = 1
+$intAuthUpdateEmailSuccess = 0
+$intAuthUpdateEmailFailure = 0
+$arrEmailSetUser = @()
+$intTotalSuccesses = $psobjPhoneSetResults.Count
+foreach($arrEmailSetUser in $psobjPhoneSetResults){
+    $objEmailSetError = ""
+    Write-Progress `
+        -Activity "Setting Email Authentication Information" `
+        -Status "$($intProgressStatus) of $($psobjPhoneSetResults.Count)" `
+        -CurrentOperation $intProgressStatus `
+        -PercentComplete  (($intProgressStatus / @($psobjPhoneSetResults).Count) * 100)
+    $arrEmailParams = @()
+    $arrEmailParams = @{
+        EmailAddress = $arrEmailSetUser.OldEmail
+    }
+    try{
+        New-MgUserAuthenticationEmailMethod -UserId $arrEmailSetUser.UPN -BodyParameter $arrEmailParams -ErrorAction Stop
+        $intAuthUpdateEmailSuccess ++
+        $intTotalSuccesses ++
+        $psobjOperationResults += [PSCustomObject]@{
+            Id = $arrEmailSetUser.Id
+            DisplayName = $arrEmailSetUser.DisplayName
+            NewEmail = $arrEmailSetUser.NewEmail
+            OldEmail = $arrEmailSetUser.OldEmail
+            NewPhone = $arrEmailSetUser.NewPhone
+            OldPhone = $arrEmailSetUser.OldPhone
+            UPN = $arrEmailSetUser.UPN
+            Result = "Phone/Email Authentication Method Set."
+            AADUser = $true
+            AuthMethodEmailSet = $true 
+            AuthMethodPhoneSet = $true
+            RawError = $null
+        }
+    }catch{
+        $objEmailSetError = $Error[0].Exception.Message #Get-Error
+        $intAuthUpdateEmailFailure ++
+        $psobjOperationResults += [PSCustomObject]@{
+            Id = $arrEmailSetUser.Id
+            DisplayName = $arrEmailSetUser.DisplayName
+            NewEmail = $arrEmailSetUser.NewEmail
+            OldEmail = $arrEmailSetUser.OldEmail
+            NewPhone = $arrEmailSetUser.NewPhone
+            OldPhone = $arrEmailSetUser.OldPhone
+            UPN = $arrEmailSetUser.UPN
+            Result = "Phone Information Set. Unable to set Email Authentication Method."
+            AADUser = $true
+            AuthMethodEmailSet = $false
+            AuthMethodPhoneSet = $true 
+            RawError = $objEmailSetError
+        }
+    } 
+    $intProgressStatus ++
+}
+$intUniqueUserFailures = $psobjOperationResults `
+                            | Where-Object {$_.AADUser -eq $false} `
+                            | Where-Object {$_.AuthMethodEmailSet -eq $false} `
+                            | Where-Object {$_.AuthMethodPhoneSet -eq $false}
+Write-Host "Succesfully set Authentication Information for " $intTotalSuccesses " Users." -ForegroundColor Green
+Write-Host "Failed to set Email Authentication Information for $intAuthUpdateEmailFailure Users." -ForegroundColor Red
+Write-Host "Failed to set Phone Authentication Information for $intAuthUpdatePhoneFailure Users." -ForegroundColor Red
+Write-Host "Failed to resolve users to Azure AD for $intResolvedUserFailure Users." -ForegroundColor Red
+Write-Host "Unique users with failures: $intUniqueUserFailures"  -ForegroundColor Red
 Write-Host "Exporting results to CSV file. "
 #   export to file
 $dateNow = $null
 $strFilePathDate = $null
-$strFinalStatusOutput = $null
+$strOperationResultsOutput = $null
 $dateNow = Get-Date 
 $strFilePathDate = $dateNow.ToString("yyyyMMddhhmm")
-$strFinalStatusOutput = $strExportDirPath + "BatchSSPR_AuthMethodSetResults" + $strFilePathDate + ".csv"
-$psobjAuthMethodResults | ConvertTo-Csv | Out-File $strFinalStatusOutput
+$strOperationResultsOutput = $strExportDirPath + "BatchSSPR_AuthMethodSetResults" + $strFilePathDate + ".csv"
+$psobjOperationResults | ConvertTo-Csv | Out-File $strFinalStatusOutput
 Write-Host "Export complete. " -ForegroundColor Green
-Write-Host "See " + $strFinalStatusOutput + " for a detailed output."$ -ForegroundColor Red -BackgroundColor Yellow
+Write-Host "See " + $strOperationResultsOutput + " for a detailed output."$ -ForegroundColor Red -BackgroundColor Yellow
