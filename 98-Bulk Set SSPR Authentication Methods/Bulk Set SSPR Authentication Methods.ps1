@@ -1,7 +1,3 @@
-###################### Variables Requiring Input #################
-$strImportFilePath = "(Your CSV File & Path Here)"
-$strExportDirPath = "(File Directory Path to Store CSVs After Completion)"
-###################### Variables Requiring Input #################
 
 #   This import is critical to the workflow of this script. See the example csv in this folder for details.
 #       - CSV "upn" maps to Script $strUser
@@ -78,17 +74,16 @@ foreach($arrPhoneSetUser in $psobjAADUsers){
     $objPhoneSetError = ""
     Write-Progress `
         -Activity "Setting Phone Authentication Information" `
-        -Status "$($intProgressStatus) of $($psobjResolvedUsers.Count)" `
+        -Status "$($intProgressStatus) of $($psobjAADUsers.Count)" `
         -CurrentOperation $intProgressStatus `
-        -PercentComplete  (($intProgressStatus / @($psobjResolvedUsers).Count) * 100)
+        -PercentComplete  (($intProgressStatus / $($psobjAADUsers).Count) * 100)
     $arrPhoneParams = @()
     $arrPhoneParams = @{
-        PhoneNumber = "+1 " + $arrUser.OldPhone
+        PhoneNumber = "+1 " + $arrPhoneSetUser.OldPhone
         PhoneType = "mobile"
     }
     try{
-        New-MgUserAuthenticationPhoneMethod -UserId $psobjAADUsers.UPN -BodyParameter $arrPhoneParams -ErrorAction Stop
-        $intAuthUpdatePhoneSuccess ++
+        New-MgUserAuthenticationPhoneMethod -UserId $arrPhoneSetUser.UPN -BodyParameter $arrPhoneParams -ErrorAction Stop
         $psobjPhoneSetResults += [PSCustomObject]@{
             Id = $arrPhoneSetUser.Id
             DisplayName = $arrPhoneSetUser.DisplayName
@@ -102,9 +97,10 @@ foreach($arrPhoneSetUser in $psobjAADUsers){
             AuthMethodPhoneSet = $true
             RawError = $null
         }
+        $intAuthUpdatePhoneSuccess ++
     }catch{
         $objPhoneSetError = $Error[0].Exception.Message #Get-Error
-        $intAuthUpdatePhoneFailure ++
+
         $psobjOperationResults += [PSCustomObject]@{
             Id = $arrPhoneSetUser.Id
             DisplayName = $arrPhoneSetUser.DisplayName
@@ -119,12 +115,13 @@ foreach($arrPhoneSetUser in $psobjAADUsers){
             AuthMethodPhoneSet = $false 
             RawError = $objPhoneSetError
         }
+        $intAuthUpdatePhoneFailure ++
     } 
     $intProgressStatus ++
 }
 Write-Host "Phone Authentication Method Suceeded for $intAuthUpdatePhoneSuccess Users." -ForegroundColor Green
 Write-Host "Phone Authentication Method Failed for $intAuthUpdatePhoneFailure Users." -ForegroundColor Red
-Write-Host "Setting Authentication Email Information for $($psobjAADUsers.Count) users"
+Write-Host "Setting Authentication Email Information for $($psobjPhoneSetResults.Count) users"
 #   Set email attributes for users
 $intProgressStatus = 1
 $intAuthUpdateEmailSuccess = 0
@@ -137,15 +134,13 @@ foreach($arrEmailSetUser in $psobjPhoneSetResults){
         -Activity "Setting Email Authentication Information" `
         -Status "$($intProgressStatus) of $($psobjPhoneSetResults.Count)" `
         -CurrentOperation $intProgressStatus `
-        -PercentComplete  (($intProgressStatus / @($psobjPhoneSetResults).Count) * 100)
+        -PercentComplete  (($intProgressStatus / $($psobjPhoneSetResults).Count) * 100)
     $arrEmailParams = @()
     $arrEmailParams = @{
         EmailAddress = $arrEmailSetUser.OldEmail
     }
     try{
         New-MgUserAuthenticationEmailMethod -UserId $arrEmailSetUser.UPN -BodyParameter $arrEmailParams -ErrorAction Stop
-        $intAuthUpdateEmailSuccess ++
-        $intTotalSuccesses ++
         $psobjOperationResults += [PSCustomObject]@{
             Id = $arrEmailSetUser.Id
             DisplayName = $arrEmailSetUser.DisplayName
@@ -160,9 +155,10 @@ foreach($arrEmailSetUser in $psobjPhoneSetResults){
             AuthMethodPhoneSet = $true
             RawError = $null
         }
+        $intAuthUpdateEmailSuccess ++
+        $intTotalSuccesses ++
     }catch{
         $objEmailSetError = $Error[0].Exception.Message #Get-Error
-        $intAuthUpdateEmailFailure ++
         $psobjOperationResults += [PSCustomObject]@{
             Id = $arrEmailSetUser.Id
             DisplayName = $arrEmailSetUser.DisplayName
@@ -177,13 +173,11 @@ foreach($arrEmailSetUser in $psobjPhoneSetResults){
             AuthMethodPhoneSet = $true 
             RawError = $objEmailSetError
         }
+        $intAuthUpdateEmailFailure ++
     } 
     $intProgressStatus ++
 }
-$intUniqueUserFailures = $psobjOperationResults `
-                            | Where-Object {$_.AADUser -eq $false} `
-                            | Where-Object {$_.AuthMethodEmailSet -eq $false} `
-                            | Where-Object {$_.AuthMethodPhoneSet -eq $false}
+$intUniqueUserFailures = $psobjOperationResults | Where-Object {$_.AADUser -eq $false -or $_.AuthMethodEmailSet -eq $false -or $_.AuthMethodPhoneSet -eq $false}
 Write-Host "Succesfully set Authentication Information for " $intTotalSuccesses " Users." -ForegroundColor Green
 Write-Host "Failed to set Email Authentication Information for $intAuthUpdateEmailFailure Users." -ForegroundColor Red
 Write-Host "Failed to set Phone Authentication Information for $intAuthUpdatePhoneFailure Users." -ForegroundColor Red
@@ -197,6 +191,6 @@ $strOperationResultsOutput = $null
 $dateNow = Get-Date 
 $strFilePathDate = $dateNow.ToString("yyyyMMddhhmm")
 $strOperationResultsOutput = $strExportDirPath + "BatchSSPR_AuthMethodSetResults" + $strFilePathDate + ".csv"
-$psobjOperationResults | ConvertTo-Csv | Out-File $strFinalStatusOutput
+$psobjOperationResults | ConvertTo-Csv | Out-File $strOperationResultsOutput
 Write-Host "Export complete. " -ForegroundColor Green
 Write-Host "See " + $strOperationResultsOutput + " for a detailed output."$ -ForegroundColor Red -BackgroundColor Yellow
