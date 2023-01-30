@@ -1,4 +1,9 @@
-
+###################### Variables Requiring Input #################
+$strImportFilePath = ""
+$strExportDirPath = ""
+$strImportFilePath = "(Your CSV file path here)"
+$strExportDirPath = "(Youre export directory path here)"
+###################### Variables Requiring Input #################
 #   This import is critical to the workflow of this script. See the example csv in this folder for details.
 #       - CSV "upn" maps to Script $strUser
 #       - CSV "email" maps to Script $strEmailAddress
