@@ -10,7 +10,7 @@ $arrUser = @()
 $intProgressStatus = 1
 $psobjUsersDatabase = @()
 foreach($arrUser in $arrAllUsers){
-    $objError = ""
+    $objError = @()
     $arrGetMgUser = @()
     Write-Progress `
     -Activity "Building User Database" `
@@ -19,14 +19,14 @@ foreach($arrUser in $arrAllUsers){
     -PercentComplete  (($intProgressStatus / @($arrAllUsers).Count) * 100)
     #   Try/Catch - Resolve Users
     try{
-        #region variables
+        #variables
         $arrGetMgUser = Get-MgUser -UserId $arrUser.Id -ErrorAction Stop
         $arrPhones = @()
         $arrAuthMethods = @()
         $arrAppRoleAssignments = @()
         $arrOnPremiseData = @()
         $arrUserManager = @()
-        $strUserManager = ""
+        $strUserManagerProcessed = ""
         $arrUserManages = @()
         $strPriority = ""
         $arrLicenses = @()
@@ -35,18 +35,15 @@ foreach($arrUser in $arrAllUsers){
         $arrManagedAppRegistrations = @()
         $arrUserOwnedDevices = @()
         $arrUserRegisteredDevices = @()
-        $arrUserDevices = @()#endregion
-        
-        #region ParseManagerObject
+        $arrUserDevices = @()
         try{
             $arrUserManager = Get-MgUserManager -UserId $arrGetMgUser.Id -ErrorAction Stop
-            $strUserManager = $arrUserManager.AdditionalProperties.DisplayName 
+            $strUserManagerProcessed = $arrUserManager.AdditionalProperties.DisplayName 
         }catch{
-            $objError += Get-Error
-            $strUserManager = "No Manager"
-        }#endregion 
-
-        #region parse manages object
+            $strManagerError = $Error[0].Exception.Message
+            $objError += $strManagerError
+            $strUserManagerProcessed = "No Manager"
+        }
         try {
             $arrUserManages = Get-MgUserDirectReport -UserId $arrGetMgUser.Id -ErrorAction Stop
             $arrUserManages = $arrUserManages.AdditionalProperties.DisplayName 
@@ -54,9 +51,7 @@ foreach($arrUser in $arrAllUsers){
         catch {
             $objError += Get-Error
             $arrUserManages = "No Direct Reports"
-        }#endregion
-        
-        #parse license object
+        }
         try {
             $arrLicenses = Get-MgUserLicenseDetail -UserId $arrGetMgUser.Id -ErrorAction Stop
         }
@@ -64,7 +59,6 @@ foreach($arrUser in $arrAllUsers){
             $objError += Get-Error
             $arrLicenses = "No Licenses"
         }
-        #parse memberOf object
         try {
             $arrMemberOf = Get-MgUserMemberOf -UserId $arrGetMgUser.Id -ErrorAction Stop
         }
@@ -150,8 +144,9 @@ foreach($arrUser in $arrAllUsers){
         EmployeeHireDate = $arrGetMgUser.HireDate
         ProxyAddresses = $arrGetMgUser.ProxyAddresses
         OnPremiseData = $arrOnPremiseData
+        Enabled = ""
         Error = $objError
-    }   
+    }  
     $intProgressStatus++
 }
 
@@ -162,4 +157,13 @@ $strFilePathDate = $dateNow.ToString("yyyyMMddhhmm")
 $strResolvedUserFilePath = $strExportDirPath + "UserDatabase_" + $strFilePathDate + ".csv"
 $psobjUsersDatabase | ConvertTo-Csv | Out-File $strResolvedUserFilePath
 
-
+https://learn.microsoft.com/en-us/powershell/module/microsoft.graph.users/update-mguser?view=graph-powershell-1.0
+-AccountEnabled
+-Authentication
+-AuthorizationIfo
+-Calendars
+-Drive
+-Drives
+-EmployeeType
+-JoinedTeams
+-LastPasswordChangeDateTime
