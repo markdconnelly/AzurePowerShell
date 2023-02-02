@@ -9,6 +9,7 @@ $arrAllUsers = Get-MgUser -All $true
 $arrUser = @()
 $intProgressStatus = 1
 $psobjUsersDatabase = @()
+
 foreach($arrUser in $arrAllUsers){
     $objError = @()
     $arrGetMgUser = @()
@@ -28,14 +29,21 @@ foreach($arrUser in $arrAllUsers){
         $arrUserManager = @()
         $strUserManagerProcessed = ""
         $arrUserManages = @()
-        $strPriority = ""
+        $arrUserManagesProcessed = @()
         $arrLicenses = @()
+        $arrLicensesProcessed = @()
         $arrMemberOf = @()
+        $arrMemberOfProcessed = @()
         $arrOauthPermissionGrants = @()
+        $arrOauthPermissionGrantsProcessed = @()
         $arrManagedAppRegistrations = @()
+        $arrManagedAppRegistrationsProcessed = @()
         $arrUserOwnedDevices = @()
+        $arrUserOwnedDevicesProcessed = @()
         $arrUserRegisteredDevices = @()
-        $arrUserDevices = @()
+        $arrUserRegisteredDevicesProcessed = @()
+        $arrUserAllDevices = @()
+        $strPriority = ""
         try{
             $arrUserManager = Get-MgUserManager -UserId $arrGetMgUser.Id -ErrorAction Stop
             $strUserManagerProcessed = $arrUserManager.AdditionalProperties.DisplayName 
