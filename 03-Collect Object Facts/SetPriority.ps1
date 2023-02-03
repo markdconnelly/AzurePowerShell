@@ -1,4 +1,17 @@
-#   Define the roles that will trigger this automation. Add any privileged roles that are not included in the default list
+$strClientID = Get-Secret -Name PSAppID -AsPlainText
+$strTenantID = Get-Secret -Name PSAppTenantID -AsPlainText
+$strClientSecret = Get-Secret -Name PSAppSecret -AsPlainText
+$strAPI_URI = "https://login.microsoftonline.com/$strTenantID/oauth2/token"
+$arrAPI_Body = @{
+    grant_type = "client_credentials"
+    client_id = $strClientID
+    client_secret = $strClientSecret
+    resource = "https://graph.microsoft.com"
+}
+$objAccessTokenRaw = Invoke-RestMethod -Method Post -Uri $strAPI_URI -Body $arrAPI_Body -ContentType "application/x-www-form-urlencoded"
+$objAccessToken = $objAccessTokenRaw.access_token
+Connect-Graph -Accesstoken $objAccessToken
+#   Define the azure ad roles that will trigger this automation. Add any privileged roles that are not included in the default list
 #   region $psobjPrivilegedRoles
 $arrPrivilegedRoleIds = @()
 $arrPrivilegedRoleIds = @(
@@ -81,6 +94,10 @@ foreach($role in $psobjPrivilegedRoles){
 }
 Write-Host "Success: $intSuccessCount"
 Write-Host "Failure: $intFailureCount"
+#connect to azure account and look for privileged users
+$objCredentials = $null
+$objCredentials = New-Object System.Management.Automation.PSCredential -ArgumentList $strClientID, $strClientSecret
+Connect-AzAccount -ServicePrincipal -TenantId $strTenantID -Credential $objCredentials
 $arrUniquePrivilegedUsers = $psobjPrivilegedUsers | Sort-Object -Property userPrincipalName -Unique | Select-Object -Property userPrincipalName, displayName, givenName, surname, mail 
 #connect to exchange online
 $strAppCertThumbprint = ""
@@ -89,7 +106,7 @@ $strAppOrgName = ""
 $strAppOrgName = Get-Secret -Name PSAppOrganizationName -AsPlainText
 $strAppID = ""
 $strAppID = Get-Secret -Name PSAppID -AsPlainText
-Connect-ExchangeOnline -CertificateThumbPrint $strAppCertThumbprint -AppID  $strAppID -Organization $strAppOrgName 
+#Connect-ExchangeOnline -CertificateThumbPrint $strAppCertThumbprint -AppID  $strAppID -Organization $strAppOrgName 
 
 
 
