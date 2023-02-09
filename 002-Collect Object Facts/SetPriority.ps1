@@ -113,7 +113,7 @@ $strAppID = Get-Secret -Name PSAppID -AsPlainText
 
 
 
-
+#   add logic to set priority users under user impersonation protection settings in 365 phishing policies
 
 
 
