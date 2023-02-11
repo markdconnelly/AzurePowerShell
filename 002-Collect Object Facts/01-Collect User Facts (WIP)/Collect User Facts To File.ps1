@@ -38,16 +38,20 @@ foreach($arrUser in $arrAllUsers){
         $strUserPrincipalName = $arrGetMgUser.UserPrincipalName
         $strUserMail = ""
         $strUserMail = $arrGetMgUser.Mail
-        
+        $arrPhones = @()
+        $arrPhones = $arrGetMgUser.MobilePhone
+        $arrPhones = $arrPhones += $arrGetMgUser.BusinessPhones
+        $strJobTitle = ""
+        $strJobTitle = $arrGetMgUser.JobTitle
         $arrUserManager = @()
-        $strUserManagerProcessed = ""
         try{
             $arrUserManager = Get-MgUserManager -UserId $arrGetMgUser.Id -ErrorAction Stop
-            $strUserManagerProcessed = $arrUserManager.AdditionalProperties.DisplayName 
+            $arrUserManager = $arrUserManager.AdditionalProperties.DisplayName 
         }catch{
+            $strManagerError = ""
             $strManagerError = $Error[0].Exception.Message
             $objError += $strManagerError
-            $strUserManagerProcessed = "No Manager"
+            $arrUserManager = "No Manager"
         }
         $arrUserManages = @()
         try {
@@ -55,7 +59,9 @@ foreach($arrUser in $arrAllUsers){
             $arrUserManages = $arrUserManages.AdditionalProperties | Select-Object Id, DisplayName 
         }
         catch {
-            $objError += Get-Error
+            $strUserManagesError = ""
+            $strUserManagesError = $Error[0].Exception.Message
+            $objError += $strUserManagesError
             $arrUserManages = "No Direct Reports"
         }
         try {
