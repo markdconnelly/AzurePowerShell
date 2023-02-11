@@ -22,6 +22,7 @@ foreach($arrUser in $arrAllUsers){
     try{
         #variables
         $arrGetMgUser = Get-MgUser -UserId $arrUser.Id -ErrorAction Stop
+        
         $arrPhones = @()
         $arrAuthMethods = @()
         $arrAppRoleAssignments = @()
@@ -75,12 +76,18 @@ foreach($arrUser in $arrAllUsers){
             $arrMemberOf = "No MemberOf"
         }
         #parse oauthPermissionGrants object
-        try {
-            $arrOauthPermissionGrants = Get-MgUserOauth2PermissionGrant -UserId $arrGetMgUser.Id -ErrorAction Stop
-        }
-        catch {
-            $objError += Get-Error
-            $arrOauthPermissionGrants = "No OAuth Permission Grants"
+        $psobjOauthPermissions = @()
+        $arrOauthPermissionGrants = Get-MgUserOAuth2PermissionGrant -UserId $user
+        foreach($grant in $arrOauthPermissionGrants){
+            $arrApp = @()
+            $arrApp = Get-MgServicePrincipal -ServicePrincipalId $grant.ClientId
+            $psobjOauthPermissions += [PSCustomObject]@{
+                OauthID = $grant.Id
+                AppDisplayName = $arrApp.DisplayName
+                ObjectId = $grant.ClientId
+                ConsentType = $grant.ConsentType
+                Scope = $grant.Scope
+            }
         }
         #parse managedAppRegistrations object
         try {
@@ -104,17 +111,77 @@ foreach($arrUser in $arrAllUsers){
             $objError += Get-Error
             $arrUserRegisteredDevices = "No Registered Devices"
         }
-        $arrUserDevices = $arrUserOwnedDevices + $arrUserRegisteredDevices #polish this up later
+        $arrUserDevices = $arrUserOwnedDevices += $arrUserRegisteredDevices #polish this up later
 
         #collect authentication methods - TBD
-        $arrAuthMethods = $arrGetMgUser.Authentication.AuthenticationMethods.Id
+        $arrAuthMethods_HFB = Get-MgUserAuthenticationWindowHelloForBusinessMethod -UserId $user
+        $arrAuthMethods_MSAuth = Get-MgUserAuthenticationMicrosoftAuthenticatorMethod -UserId $user
+        $arrAuthMethods_Phone = Get-MgUserAuthenticationPhoneMethod -UserId $user
+        $arrAuthMethods_Email = Get-MgUserAuthenticationEmailMethod -UserId $user
+        $arrAuthMethods_Fido2 = Get-MgUserAuthenticationFido2Method -UserId $user
+        $arrAuthMethods_Password = Get-MgUserAuthenticationPasswordMethod -UserId $user
+        $psobjAuthMethods = @()
+        foreach($HFB in $arrAuthMethods_HFB){
+            $psobjAuthMethods += [PSCustomObject]@{
+                AuthMethodId = $HFB.Id
+                AuthMethodType = "Hello for Business"
+                AuthValue = "Key Strength: $($HFB.KeyStrength)"
+                AuthDevice = $HFB.DisplayName
+                AuthCreated = $HFB.CreatedDateTime
+            }
+        }
+        foreach($MSAuth in $arrAuthMethods_MSAuth){
+            $psobjAuthMethods += [PSCustomObject]@{
+                AuthMethodId = $MSAuth.Id
+                AuthMethodType = "Microsoft Authenticator"
+                AuthValue = $MSAuth.DeviceTag
+                AuthDevice = $MSAuth.DisplayName
+                AuthCreated = $MSAuth.CreatedDateTime
+            }
+        }
+        foreach($Phone in $arrAuthMethods_Phone){
+            $psobjAuthMethods += [PSCustomObject]@{
+                AuthMethodId = $Phone.Id
+                AuthMethodType = "Phone"
+                AuthValue = $Phone.PhoneNumber
+                AuthDevice = $Phone.DisplayName
+                AuthCreated = ""
+            }
+        }
+        foreach($Email in $arrAuthMethods_Email){
+            $psobjAuthMethods += [PSCustomObject]@{
+                AuthMethodId = $Email.Id
+                AuthMethodType = "Email"
+                AuthValue = $Email.EmailAddress
+                AuthDevice = ""
+                AuthCreated = ""
+            }
+        }
+        foreach($Fido2 in $arrAuthMethods_Fido2){
+            $psobjAuthMethods += [PSCustomObject]@{
+                AuthMethodId = $Fido2.Id
+                AuthMethodType = "Fido2"
+                AuthValue = $Fido2.AttestationCertificates
+                AuthDevice = $Fido2.DisplayName
+                AuthCreated = $Fido2.CreatedDateTime
+            }
+        }
+        foreach($Password in $arrAuthMethods_Password){
+            $psobjAuthMethods += [PSCustomObject]@{
+                AuthMethodId = $Password.Id
+                AuthMethodType = "Password"
+                AuthValue = "Traditional Password"
+                AuthDevice = $Password.DisplayName
+                AuthCreated = $Password.CreatedDateTime
+            }
+        }
+        $arrAuthMethods = $psobjAuthMethods
         #collect app role assignments - TBD
-        $arrAppRoleAssignments = GEt-mgus
-        #collect on-premise data - TBD
+        $arrAppRoleAssignments = Get-MgUserAppRoleAssignment -UserId $user| Select-Object ResourceDisplayName
 
         #collect phone numbers - TBD
 
-        #calculate prirority - TBD
+        #calculate prirority - TBD 
         $strPriority = "TBD"
     }
     catch{
