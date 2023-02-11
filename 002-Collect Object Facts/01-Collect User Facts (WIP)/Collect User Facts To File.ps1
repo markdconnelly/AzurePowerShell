@@ -9,7 +9,6 @@ $arrAllUsers = Get-MgUser -All $true
 $arrUser = @()
 $intProgressStatus = 1
 $psobjUsersDatabase = @()
-
 foreach($arrUser in $arrAllUsers){
     $objError = @()
     $arrGetMgUser = @()
@@ -20,31 +19,28 @@ foreach($arrUser in $arrAllUsers){
     -PercentComplete  (($intProgressStatus / @($arrAllUsers).Count) * 100)
     #   Try/Catch - Resolve Users
     try{
-        #variables
+        #   Try to get the current user, and error out if you cannot. 
         $arrGetMgUser = Get-MgUser -UserId $arrUser.Id -ErrorAction Stop
+        #   If you can get the user, then continue to get the rest of the data
+        $strUserObjID = ""
+        $strUserObjID = $arrGetMgUser.Id
+        $strEmployeeID = ""
+        $strEmployeeID = $arrGetMgUser.EmployeeId
+        $objUserPhoto = @()
+        $objUserPhoto = Get-MgUserPhotoContent -UserId $arrGetMgUser.Id # ToDo: requires out-file to get figured out
+        $strUserDisplayName = ""
+        $strUserDisplayName = $arrGetMgUser.DisplayName
+        $strUserFirstName = ""
+        $strUserFirstName = $arrGetMgUser.GivenName
+        $strUserLastName = ""
+        $strUserLastName = $arrGetMgUser.Surname
+        $strUserPrincipalName = ""
+        $strUserPrincipalName = $arrGetMgUser.UserPrincipalName
+        $strUserMail = ""
+        $strUserMail = $arrGetMgUser.Mail
         
-        $arrPhones = @()
-        $arrAuthMethods = @()
-        $arrAppRoleAssignments = @()
-        $arrOnPremiseData = @()
         $arrUserManager = @()
         $strUserManagerProcessed = ""
-        $arrUserManages = @()
-        $arrUserManagesProcessed = @()
-        $arrLicenses = @()
-        $arrLicensesProcessed = @()
-        $arrMemberOf = @()
-        $arrMemberOfProcessed = @()
-        $arrOauthPermissionGrants = @()
-        $arrOauthPermissionGrantsProcessed = @()
-        $arrManagedAppRegistrations = @()
-        $arrManagedAppRegistrationsProcessed = @()
-        $arrUserOwnedDevices = @()
-        $arrUserOwnedDevicesProcessed = @()
-        $arrUserRegisteredDevices = @()
-        $arrUserRegisteredDevicesProcessed = @()
-        $arrUserAllDevices = @()
-        $strPriority = ""
         try{
             $arrUserManager = Get-MgUserManager -UserId $arrGetMgUser.Id -ErrorAction Stop
             $strUserManagerProcessed = $arrUserManager.AdditionalProperties.DisplayName 
@@ -53,9 +49,10 @@ foreach($arrUser in $arrAllUsers){
             $objError += $strManagerError
             $strUserManagerProcessed = "No Manager"
         }
+        $arrUserManages = @()
         try {
             $arrUserManages = Get-MgUserDirectReport -UserId $arrGetMgUser.Id -ErrorAction Stop
-            $arrUserManages = $arrUserManages.AdditionalProperties.DisplayName 
+            $arrUserManages = $arrUserManages.AdditionalProperties | Select-Object Id, DisplayName 
         }
         catch {
             $objError += Get-Error
@@ -77,7 +74,7 @@ foreach($arrUser in $arrAllUsers){
         }
         #parse oauthPermissionGrants object
         $psobjOauthPermissions = @()
-        $arrOauthPermissionGrants = Get-MgUserOAuth2PermissionGrant -UserId $user
+        $arrOauthPermissionGrants = Get-MgUserOAuth2PermissionGrant -UserId $arrGetMgUser.Id
         foreach($grant in $arrOauthPermissionGrants){
             $arrApp = @()
             $arrApp = Get-MgServicePrincipal -ServicePrincipalId $grant.ClientId
@@ -206,7 +203,7 @@ foreach($arrUser in $arrAllUsers){
         AuthenticationMethods = $arrAuthMethods
         AppRoleAssignments = $arrAppRoleAssignments
         MemberOf = $arrMemberOf
-        OauthPermissionGrants = $arrOauthPermissionGrants
+        OauthPermissionGrants = $psobjOauthPermissions
         Devices = $arrUserDevices
         ManagedAppRegistrations = $arrManagedAppRegistrations
         OwnedObjects = $arrGetMgUser.OwnedObjects
@@ -218,7 +215,6 @@ foreach($arrUser in $arrAllUsers){
         Country = $arrGetMgUser.Country
         EmployeeHireDate = $arrGetMgUser.HireDate
         ProxyAddresses = $arrGetMgUser.ProxyAddresses
-        OnPremiseData = $arrOnPremiseData
         Enabled = ""
         Error = $objError
     }  
