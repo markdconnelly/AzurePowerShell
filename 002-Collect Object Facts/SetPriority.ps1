@@ -96,7 +96,8 @@ Write-Host "Success: $intSuccessCount"
 Write-Host "Failure: $intFailureCount"
 #connect to azure account and look for privileged users
 $objCredentials = $null
-$objCredentials = New-Object System.Management.Automation.PSCredential -ArgumentList $strClientID, $strClientSecret
+$secureStringCredential = ConvertTo-SecureString -String $strAppSecret
+$objCredentials = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $strAppID, (ConvertTo-SecureString -String $strAppSecret -AsPlainText -Force)
 Connect-AzAccount -ServicePrincipal -TenantId $strTenantID -Credential $objCredentials
 $arrUniquePrivilegedUsers = $psobjPrivilegedUsers | Sort-Object -Property userPrincipalName -Unique | Select-Object -Property userPrincipalName, displayName, givenName, surname, mail 
 #connect to exchange online
@@ -113,7 +114,7 @@ $strAppID = Get-Secret -Name PSAppID -AsPlainText
 
 
 
-#   add logic to set priority users under user impersonation protection settings in 365 phishing policies
+
 
 
 
