@@ -34,9 +34,10 @@ $arrAPI_Body = @{
 }
 $objAccessTokenRaw = Invoke-RestMethod -Method Post -Uri $strAPI_URI -Body $arrAPI_Body -ContentType "application/x-www-form-urlencoded"
 $objAccessToken = $objAccessTokenRaw.access_token
-Connect-Graph -Accesstoken $objAccessToken
+Connect-Graph -Accesstoken $objAccessToken 
 $arrAAD_Roles = @()
 $psobjRoles = @()
+$role = ""
 $arrAAD_Roles = Get-MgDirectoryRole 
 $intProgress = 0
 foreach($role in $arrAAD_Roles){
@@ -45,9 +46,9 @@ foreach($role in $arrAAD_Roles){
     -Status "$intProgress of $($arrAAD_Roles.Count)" `
     -CurrentOperation $intProgress `
     -PercentComplete (($intProgress /$arrAAD_Roles.Count) * 100)
-    -Id 1
 
     $arrRoleMembers = @()
+    $member = ""
     $arrRoleMembers = Get-MgDirectoryRoleMember -DirectoryRoleId $role.Id
     foreach($member in $arrRoleMembers){
         $psobjRoles += [PSCustomObject]@{
@@ -57,22 +58,21 @@ foreach($role in $arrAAD_Roles){
             ResourceName = "N/A"
             ResourceType = "N/A"
             RoleName = $role.DisplayName
-            MemberName = $member.DisplayName
-            MemberUpn = $member.UserPrincipalName
-            MemberType = $member.ObjectType
-            MemberObjId = $member.ObjectId
+            MemberName = $member.AdditionalProperties.displayName
+            MemberType = $member.AdditionalProperties.'@odata.type'
+            MemberUpn = $member.AdditionalProperties.userPrincipalName
+            MemberObjId = $member.Id
         }
     }
     $intProgress++
 } 
-
-
 # Connect to Azure Resources
 $strClientSecretSecured = ""
 $strClientSecretSecured = ConvertTo-SecureString $strClientSecret -AsPlainText -Force
 $objServicePrincipalCredential = ""
 $objServicePrincipalCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $strClientID, $strClientSecretSecured
 Connect-AzAccount -ServicePrincipal -Credential $objServicePrincipalCredential -Tenant $strTenantID
+
 $arrAzureManagementGroups = @()
 $intProgress = 0
 $arrAzureManagementGroups = Get-AzManagementGroup
@@ -82,22 +82,21 @@ foreach($group in $arrAzureManagementGroups){
     -Status "$intProgress of $($arrAzureManagementGroups.Count)" `
     -CurrentOperation $intProgress `
     -PercentComplete (($intProgress /$arrAzureManagementGroups.Count) * 100)
-    -Id 2
 
     $arrRoleAssignments = @()
-    $arrRoleAssignments = Get-AzRoleAssignment -ObjectId $group.GroupId
+    $arrRoleAssignments = Get-AzRoleAssignment -Scope $group.GroupId | Where-Object {$_.Scope -eq $group.GroupId}
     foreach($role in $arrRoleAssignments){
         $psobjRoles += [PSCustomObject]@{
             RoleType = "Azure"
             Scope = "Management Group"
-            ResourceId = $group.GroupId
+            ResourceId = $group.Id
             ResourceName = $group.DisplayName
             ResourceType = "Management Group"
             RoleName = $role.RoleDefinitionName
             MemberName = $role.DisplayName
-            MemberUpn = $role.UserPrincipalName
-            MemberType = $role.PrincipalType
-            MemberObjId = $role.PrincipalId
+            MemberType = $role.ObjectType
+            MemberUpn = $role.SignInName
+            MemberObjId = $role.ObjectId
         }
     }
     $intProgress++
@@ -112,22 +111,22 @@ foreach($sub in $arrAzureSubscriptions){
     -Status "$intProgress of $($arrAzureSubscriptions.Count)" `
     -CurrentOperation $intProgress `
     -PercentComplete (($intProgress /$arrAzureSubscriptions.Count) * 100)
-    -Id 3
 
+    Set-AzContext -SubscriptionId $sub.Id
     $arrRoleAssignments = @()
-    $arrRoleAssignments = Get-AzRoleAssignment -ObjectId $sub.SubscriptionId
+    $arrRoleAssignments = Get-AzRoleAssignment | Where-Object {$_.Scope -eq "/subscriptions/$($sub.Id)"}
     foreach($role in $arrRoleAssignments){
         $psobjRoles += [PSCustomObject]@{
             RoleType = "Azure"
             Scope = "Subscription"
-            ResourceId = $sub.SubscriptionId
+            ResourceId = $sub.Id
             ResourceType = "Subscription"
-            ResourceName = $sub.DisplayName
+            ResourceName = $sub.Name
             RoleName = $role.RoleDefinitionName
             MemberName = $role.DisplayName
-            MemberUpn = $role.UserPrincipalName
-            MemberType = $role.PrincipalType
-            MemberObjId = $role.PrincipalId
+            MemberType = $role.ObjectType
+            MemberUpn = $role.SignInName
+            MemberObjId = $role.ObjectId
         }
     }
     $intProgress++
@@ -135,17 +134,19 @@ foreach($sub in $arrAzureSubscriptions){
 
 $arrAzureResourceGroups = @()
 $intProgress = 0
-$arrAzureResourceGroups = Get-AzResourceGroup
+foreach($sub in $arrAzureSubscriptions){
+    Set-AzContext -SubscriptionId $sub.Id
+    $arrAzureResourceGroups += Get-AzResourceGroup
+}
 foreach($rg in $arrAzureResourceGroups){
     Write-Progress `
     -Activity 'Processing Azure Resource Groups' `
     -Status "$intProgress of $($arrAzureResourceGroups.Count)" `
     -CurrentOperation $intProgress `
     -PercentComplete (($intProgress /$arrAzureResourceGroups.Count) * 100)
-    -Id 4
 
     $arrRoleAssignments = @()
-    $arrRoleAssignments = Get-AzRoleAssignment -ObjectId $rg.ResourceId
+    $arrRoleAssignments = Get-AzRoleAssignment -ResourceGroupName $rg.ResourceGroupName | Where-Object {$_.Scope -like "*resourceGroups/$($rg.ResourceGroupName)"}
     foreach($role in $arrRoleAssignments){
         $psobjRoles += [PSCustomObject]@{
             RoleType = "Azure"
@@ -155,9 +156,9 @@ foreach($rg in $arrAzureResourceGroups){
             ResourceType = "Resource Group"
             RoleName = $role.RoleDefinitionName
             MemberName = $role.DisplayName
-            MemberUpn = $role.UserPrincipalName
-            MemberType = $role.PrincipalType
-            MemberObjId = $role.PrincipalId
+            MemberType = $role.ObjectType
+            MemberUpn = $role.SignInName
+            MemberObjId = $role.ObjectId
         }
     }
     $intProgress++
@@ -165,17 +166,19 @@ foreach($rg in $arrAzureResourceGroups){
 
 $arrAzureResources = @()
 $intProgress = 0
-$arrAzureResources = Get-AzResource
+foreach($sub in $arrAzureSubscriptions){
+    Set-AzContext -SubscriptionId $sub.Id
+    $arrAzureResources += Get-AzResource
+}
 foreach($resource in $arrAzureResources){
     Write-Progress `
     -Activity 'Processing Azure Resources' `
     -Status "$intProgress of $($arrAzureResources.Count)" `
     -CurrentOperation $intProgress `
     -PercentComplete (($intProgress /$arrAzureResources.Count) * 100)
-    -Id 5
 
     $arrRoleAssignments = @()
-    $arrRoleAssignments = Get-AzRoleAssignment -ObjectId $resource.ResourceId
+    $arrRoleAssignments = Get-AzRoleAssignment -Scope $resource.ResourceId | Where-Object {$_.Scope -like "*$($resource.ResourceId)"}
     foreach($role in $arrRoleAssignments){
         $psobjRoles += [PSCustomObject]@{
             RoleType = "Azure"
@@ -185,16 +188,15 @@ foreach($resource in $arrAzureResources){
             ResourceType = $resource.ResourceType
             RoleName = $role.RoleDefinitionName
             MemberName = $role.DisplayName
-            MemberUpn = $role.UserPrincipalName
-            MemberType = $role.PrincipalType
-            MemberObjId = $role.PrincipalId
+            MemberType = $role.ObjectType
+            MemberUpn = $role.SignInName
+            MemberObjId = $role.ObjectId
         }
     }
     $intProgress++
 }
 
 # Export to CSV
-#   export to file
 $dateNow = $null
 $strFilePathDate = $null
 $strOperationResultsOutput = $null
